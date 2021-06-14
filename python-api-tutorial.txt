@@ -1,0 +1,347 @@
+https://www.dataquest.io/blog/python-api-tutorial/
+Making API Requests in Python
+	- pip install requests
+	- pyapi.py
+		- import requests
+		- response = requests.get("https://api.open-notify.org/this-api-doesnt-exist")
+			- When we make a request, the response from the API comes with a response code which tells us whether our request was successful. 
+			- requests.get("https://api.open-notify.org/astros.json") , status code 200
+		- print(response.status_code)
+			- 404
+			- Here are some codes that are relevant to GET requests:
+				- 200: Everything went okay, and the result has been returned (if any).
+				- 301: The server is redirecting you to a different endpoint. This can happen when a company switches domain names, or an endpoint name is changed.
+				- 400: The server thinks you made a bad request. This can happen when you don’t send along the right data, among other things.
+				- 401: The server thinks you’re not authenticated. Many APIs require login ccredentials, so this happens when you don’t send the right credentials to access an API.
+				- 403: The resource you’re trying to access is forbidden: you don’t have the right permissions to see it.
+				- 404: The resource you tried to access wasn’t found on the server.
+				- 503: The server is not ready to handle the request.
+		- print(response.json())
+			- to see the data received back from the API
+			- {'message': 'success', 'people': [{'name': 'Alexey Ovchinin', 'craft': 'ISS'}, {'name': 'Nick Hague', 'craft': 'ISS'}, {'name': 'Christina Koch', 'craft': 'ISS'}, {'name': 'Alexander Skvortsov', 'craft': 'ISS'}, {'name': 'Luca Parmitano', 'craft': 'ISS'}, {'name': 'Andrew Morgan', 'craft': 'ISS'}], 'number': 6}
+			- python json library - has 2 main functions
+				- json.dumps() — Takes in a Python object, and converts (dumps) it to a string.
+				- json.loads() — Takes a JSON string, and converts (loads) it to a Python object.
+		- import json
+		- def jprint(obj):
+    			- # create a formatted string of the Python JSON object
+    			- text = json.dumps(obj, sort_keys=True, indent=4)
+    			- print(text)
+		- jprint(response.json())
+			- {
+			    "message": "success",
+			    "number": 6,
+			    "people": [
+				{
+				    "craft": "ISS",
+				    "name": "Alexey Ovchinin"
+				},
+				...
+		- Using an API with Query Parameters
+			- parameters = {
+				"lat": 40.71,
+				"lon": -74
+			  }
+			  	- https://api.open-notify.org/iss-pass.json?lat=40.71&lon;=-74
+			- response = requests.get("https://api.open-notify.org/iss-pass.json", params=parameters)
+		- parse response
+			- response 
+				{
+				    "message": "success",
+				    "request": {
+					"altitude": 100,
+					"datetime": 1568062811,
+					"latitude": 40.71,
+					"longitude": -74.0,
+					"passes": 5
+				    },
+				    "response": [
+					{
+					    "duration": 395,
+					    "risetime": 1568082479
+					},
+					...
+				    ]
+				  }  
+			- pass_times = response.json()['response']
+		          jprint(pass_times)
+				[
+				    {
+					"duration": 395,
+					"risetime": 1568082479
+				    },
+				    ....
+				]
+			- loop to extract just the five risetime values: 
+
+				risetimes = []
+
+				for d in pass_times:
+				    time = d['risetime']
+				    risetimes.append(time)
+
+				print(risetimes)
+				[1568082479, 1568088118, 1568093944, 1568099831, 1568105674]
+			- convert these into easier to understand times:
+			  	from datetime import datetime
+				 time = datetime.fromtimestamp(d['risetime'])
+https://towardsdatascience.com/creating-a-beautiful-web-api-in-python-6415a40789af
+	- Install Mongo DB, used https://cloud.mongodb.com/v2/5b982ae5df9db16e28d52a2d#metrics/replicaSet/60bd65dd38d12e703453eec5/explorer/python_api_db/meals/find
+	- Install Flask "pip install Flask"
+	- project structure 
+		- git clone -b template https://github.com/jrbarhydt/FlaskWebAPI.git
+		Or build it yourself:
+		¦
+		¦   app.py
+		¦   Procfile
+		¦   requirements.txt
+		¦   runtime.txt
+		¦
+		+---api
+		¦       authentication.py
+		¦       meal.py
+		¦       routes.py
+		¦       user.py
+		¦       __init__.py
+		¦
+		+---models
+		¦       meals.py
+		¦       users.py
+		¦       __init__.py
+		¦
+		+---resources
+		¦       meal_data.csv
+		¦       user_data.csv
+		¦
+		+---tools
+			load_data.py
+			__init__.py
+
+		- run through cmd app.py
+			- I added the __main__ entry point, so if I execute this script as-is, it will launch in debug mode.
+	- install Flask-MongoEngine, as well as BCrypt for password encryption.
+		- Flask-MongoEngine also comes with MongoEngine and PyMongo
+		- pip install flask-mongoengine
+		- pip install flask-bcrypt	
+	- create a class model for users and meals. 	
+		- models/meals.py (without documentation)
+		- models/users.py
+			 - Field for determining access level, validating phone numbers and overrides the Document.save() method, generate a password hash before saving to db. 
+	- install  Flask-RESTful
+		- pip install flask-restful
+		- It will make a Class for each API interaction. These Classes are called Resources. 
+		- In Flask, connecting a Resource to an endpoint is called a route. 
+		- Endpoitns - authentication (signing up and logging in), users (to GET or PUT or DELETE user data), and meals (to GET, PUT, or POST).
+	- first api call, api/meal.py
+		# flask packages
+		from flask import jsonify
+		from flask_restful import Resource
+		
+		# mongo-engine models
+		from models.meals import Meals
+		
+		class MealsApi(Resource):
+		    def get(self):
+		        output = Meals.objects()
+        		return jsonify({'result': output})
+        		
+        	- Make a GET request to the correct route, the get() method of this class will be called.
+        	
+	- Specify the correct route to access this. api/routes.py
+		from api.meal import MealsApi
+
+		def create_routes(api):
+		    api.add_resource(MealsApi, '/meal/')
+		   	
+		- Here, added the MealsApi Resource that was just created, and gave it the ‘/meal/’ endpoint.		   
+	- Update the import section to get the necessary modules in app.py
+		# flask packages
+		from flask import Flask, app
+		from flask_restful import Api
+		from flask_mongoengine import MongoEngine
+		# local packages
+		from api.routes import create_routes
+	- Add the following lines to the end of get_flask_app() in app.py in order to setup the RESTful API andMongoEngine.
+		# init api and routes
+		api = Api(app=flask_app)
+		create_routes(api=api)
+		# init mongoengine
+		db = MongoEngine(app=flask_app)
+		return flask_app		
+	- instal "pip install pymongo[srv]" to solve mongodb connection url
+		"pymongo.errors.ConfigurationError: The "dnspython" module must be installed to use mongodb+srv:// URIs"
+		#mongodb+srv://mongodbuser:<password>@cluster0.oek74.mongodb.net/myFirstDatabase?retryWrites=true&w=majority
+	- http://127.0.0.1:5000/meal/	
+		{ "result": [
+			{
+				"_id": { "$oid": "60bd6733c01dab82006f50ca" },
+				"description": "Not even the baker knows what's inside...",
+				"name": "Mystery Pie"
+			},
+			{
+				"_id": { "$oid": "60bd6748c01dab82006f52dc" },
+				"description": "A delicious, home-made apple pie. Best served on a window sill in the summer.",
+				"name": "Apple Pie"
+			}
+		] }
+
+	- api/authentication.py - two routes included (singing up and logging in). 
+		- The SignUpApi Class is the same as a POST request to the User model
+			- the post() method is static since the class has no special context, such as requiring JSON Web Tokens.
+			- The get, post, put, and delete return type is Response, this is a class that Flask inherits from Werkzeug. 
+				- It just handles HTTP communication stuff. Flask takes care of this when you pass a dictionary object into flask.jsonify.
+			- If the asterisks in Users(**data), is just a concise way of passing arguments into a Class or method using a dictionary.
+		- The LoginApi checks the given password to see if it matches and then creates web tokens if successful. 
+			- These tokens allow a user to continue using the API without the need to login for each request. 
+			- A refresh token is generated, but not used in this tutorial. This would allow a user to continue their session after the token expires.
+	- api/errors.py
+	- api/meal.py
+		- Firstly, some of the methods have arguments now. This is handled by routes.py which will snag arguments from your endpoint. 
+		- Secondly, the @jwt_required decorator before some of the methods. This single line allows you to enforce the use of web tokens to gain access to the data.
+	- api/routes.py, update other route
+	- api/user.py
+	- install pip install flask-jwt-extended not working, download source code, python setup.py install
+		- https://pypi.org/project/Flask-JWT-Extended/#files
+		- https://github.com/vimalloc/flask-jwt-extended
+		- https://flask-jwt-extended.readthedocs.io/en/stable/installation/
+	- update app.py. 
+		- add a jwt secret key to the default config, these are only designated for testing. 
+		- In a production setting, you would save the configuration file elsewhere, and pass it into the get_flask_app() method. 
+	- use postman
+		- http://127.0.0.1:5000/meal	=> {  "msg": "Missing Authorization Header" }
+		- post http://127.0.0.1:5000/authentication/signup/ 
+			- Body, json
+			{
+			 "email": "test@not-a-fake-email.com",
+			 "password": "hunter2",
+			 "access": {
+			  "admin": "True"
+			 },
+			 "name": "testy buddy",
+			 "phone": "555-555-5432"
+			}
+			=> { "result": { "id": "60be4b49a869407a208f6895" } }	
+	- resources/meal_data.csv, resources/user_data.csv, tools/get_random_document.py, tools/load_data.py, tools/mongo_loader.py
+
+What Is A Web API
+Repeating blocks in YAML
+4 min read
+YAML is a language commonly used to create configuration files. A common problem when creating YAML files is a need to repeat segments of your code. This can make your files harder to maintain.
+
+In this post, we’ll teach you how to define a YAML block for reuse later in that same file. We’ll use an example from dbt, but the same principle applies whether you’re defining docker-compose files, CI pipelines, or any other place that YAML is used.
+
+What is YAML?
+Technically, YAML is a superset of JSON, which means that any JSON is valid YAML.YAML is a language used for configuration files that was first created in 2001. Compared to JSON it’s a format that is much easier to read (and arguably, write) and has gradually increased in popularity.
+YAML has six main constructs:
+
+Lists
+Dictionaries
+Strings
+Integers
+Floats
+Booleans
+Indentation is used to define the structure of YAML files. An example showing examples of these constructs is below (comments start with the # character):
+
+- string
+- 3 # integer
+- 2.5 # float
+- dict_key_1: dict_value_1
+  dict_key_2: true # boolean
+  dict_key_3: dict_value_3
+- an original list item
+For more on the fundamentals of YAML, we recommend this tutorial.
+
+Repeating YAML Sections
+One area where YAML can be inefficient is when you have repeated sections. In dbt, YAML files are used to configure different resource types, most commonly database models. You can add tests to model columns, and you might see some repetition like this (we’ve added comments to make it clearer):
+
+version: 2
+
+models:
+  - name: model_one
+    columns:
+      - name: id
+        tests: # this block
+          - unique
+          - not_null
+      - name: col_a
+      - name: col_b
+  - name: model_two
+    columns:
+      - name: id
+        tests: # is repeated down here
+          - unique
+          - not_null
+      - name: col_c
+      - name: col_d
+In this example we have two models, and each have an id column. The tests added to this column are identical for each — we’re repeating ourselves! If we have lots of this pattern, we’re potentially doing more typing than we need to, and making things harder to mantain. It would be much more efficient for us to be able to define this test block once, and then repeat it whereever we need to!
+
+Solving Repeated YAML Sections with Anchors and Aliases
+Luckily, YAML has a little known but very handy concept that does exactly this. You define a block using an anchor, and then refer to it using an alias.
+
+Anchors are denoted using a & character followed by the anchor name. Let’s look at a simple version of defining an anchor:
+
+dict_key_1: dict_value_1
+key_with_anchor_value: &anchor_name hello
+You can see that the value that the anchor represents goes straight after the anchor name, as if the anchor didn’t exist.
+
+To use that anchor, we specify an alias using the * character followed by the anchor name:
+
+dict_key_1: dict_value_1
+key_with_anchor_value: &anchor_name hello
+key_with_alias_value: *anchor_name
+The YAML above is the equivalent of this:
+
+dict_key_1: dict_value_1
+key_with_anchor_value: hello
+key_with_alias_value: hello
+A More Complex YAML Anchor Example
+YAML anchors and alias are relatively simple when you’re representing a simple value like a string or a float, but they can get a bit tricky when you’re representing a more complex construct like a dictionary or list.
+
+The best way to remember is that the &anchor_name is followed by the block, just the same as if the anchor wasn’t there.
+
+Let’s see this in action by creating a list as our anchor block.
+
+dict_key_1: dict_value_1
+key_with_anchor_value: &list_1
+  - anchor_list_item_1
+  - anchor_list_item_2
+  - anchor_list_item_3
+key_with_alias_value: *list_1
+This above is the equivalent of this:
+
+dict_key_1: dict_value_1
+key_with_anchor_value:
+  - anchor_list_item_1
+  - anchor_list_item_2
+  - anchor_list_item_3
+key_with_alias_value:
+  - anchor_list_item_1
+  - anchor_list_item_2
+  - anchor_list_item_3
+Putting It All Together
+Let’s return to the example we used at the start - the repeated tests in our dbt model columns. Let’s use anchors to define the test block once and an alias to use it again:
+
+version: 2
+
+models:
+  - name: model_one
+    columns:
+      - name: id
+        tests: &unique_not_null
+          - unique
+          - not_null
+      - name: col_a
+      - name: col_b
+  - name: model_two
+    columns:
+      - name: id
+        tests: *unique_not_null
+      - name: col_c
+      - name: col_d
+If you want to see the equivalent of this, you can scroll up to the earlier code under the heading ‘Repeating YAML Sections’.
+
+Conclusion
+Don’t Repeat YourselfUsing anchors and aliases can help make your YAML files easier to maintain by adhering to the programming priciple ‘DRY’.
+In this tutorial we saw examples where a YAML anchor was a string and a list, but anchors can represent any of the YAML constructs.
+
+It’s worth keeping in mind that there’s a tradeoff to using anchors. While sometimes you want to keep your code ‘DRY’, other times it’s better to be explicit, so use them with care. If you do decide to use them, give your anchors really descriptive names — it doesn’t cost any more to use extra characters, and it will help to make your configuration files easier to understand.			
